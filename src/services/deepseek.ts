@@ -105,13 +105,36 @@ export async function analyzeDay(
   history: DayRecord[],
   experiments: Experiment[]
 ): Promise<string> {
+  const isProd = import.meta.env.PROD;
+  const prompt = buildPrompt(today, yesterday, history, experiments);
+
+  // ── Production: Use Secure Proxy (Netlify Functions) ──
+  if (isProd) {
+    try {
+      const response = await fetch('/.netlify/functions/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: prompt }]
+        }),
+      });
+
+      if (!response.ok) throw new Error('Proxy error');
+      const data = await response.json();
+      return data.content || '分析结果暂不可用';
+    } catch (err) {
+      console.error('AI Proxy failed:', err);
+      return 'AI 侦探暂时离开了，请稍后再试。';
+    }
+  }
+
+  // ── Local Direct Mode ──
   if (MOCK_MODE) {
     await new Promise((r) => setTimeout(r, 1200)); // simulate latency
     return mockConclusion();
   }
 
   try {
-    const prompt = buildPrompt(today, yesterday, history, experiments);
     const completion = await client!.chat.completions.create({
       model: 'deepseek-ai/DeepSeek-V3',
       messages: [{ role: 'user', content: prompt }],
