@@ -5,20 +5,23 @@ const handler: Handler = async (event) => {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
+  // 1. 检查 Key 是否存在 (不打印全量以防泄露，只打印前几位)
   const apiKey = process.env.SILICONFLOW_API_KEY;
   if (!apiKey) {
-    console.error('Missing SILICONFLOW_API_KEY in environment');
+    console.error('[Netlify Function] Error: SILICONFLOW_API_KEY is missing!');
     return { 
       statusCode: 500, 
-      body: JSON.stringify({ error: '服务器密钥未配置' }) 
+      body: JSON.stringify({ error: 'Environment variable SILICONFLOW_API_KEY not found' }) 
     };
   }
+  console.log('[Netlify Function] Key found, length:', apiKey.length);
 
   try {
     const { messages } = JSON.parse(event.body || '{}');
+    console.log('[Netlify Function] Sending request to SiliconFlow...');
 
-    // 使用原生 fetch 减少库加载开销
-    const response = await fetch('https://api.siliconflow.cn/v1/chat/completions', {
+    // 使用 .com 域名以获得更好的国际连通性
+    const response = await fetch('https://api.siliconflow.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -28,30 +31,37 @@ const handler: Handler = async (event) => {
         model: 'deepseek-ai/DeepSeek-V3',
         messages: messages,
         temperature: 0.7,
-        max_tokens: 400, // 稍微限制长度以加速回复
+        max_tokens: 300,
         stream: false
       }),
     });
 
+    console.log('[Netlify Function] SiliconFlow status:', response.status);
+
     if (!response.ok) {
-      const errorData = await response.text();
-      console.error('SiliconFlow API Error:', errorData);
-      return { statusCode: response.status, body: errorData };
+      const errorText = await response.text();
+      console.error('[Netlify Function] SiliconFlow Error Body:', errorText);
+      return { 
+        statusCode: response.status, 
+        body: JSON.stringify({ error: 'Upstream API error', details: errorText }) 
+      };
     }
 
     const data = await response.json();
+    console.log('[Netlify Function] Success! Returning response.');
+    
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        content: data.choices[0]?.message?.content || '分析完成，但未返回具体结论。',
+        content: data.choices[0]?.message?.content || '无结论',
       }),
     };
   } catch (error: any) {
-    console.error('Netlify Function Exception:', error);
+    console.error('[Netlify Function] Exception:', error.message);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: '分析服务暂时不可用' }),
+      body: JSON.stringify({ error: 'Internal logic error', message: error.message }),
     };
   }
 };
