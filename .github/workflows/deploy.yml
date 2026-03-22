@@ -26,8 +26,14 @@ jobs:
 
       - name: Build Project
         run: npm run build
+
+      - name: Inject Secure Backend Secret
+        continue-on-error: true
+        run: echo "${{ secrets.VITE_SILICONFLOW_API_KEY }}" | npx wrangler pages secret put SILICONFLOW_API_KEY --project-name gut-detective-app
         env:
-          VITE_SILICONFLOW_API_KEY: ${{ secrets.VITE_SILICONFLOW_API_KEY }}
+          CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
+          CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Create Cloudflare Pages Project (If not exists)
         continue-on-error: true

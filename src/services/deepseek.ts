@@ -112,31 +112,26 @@ export async function analyzeDay(
     }
   };
 
-  // ── Production: Use Secure Proxy (Netlify / Cloudflare / Vercel) ──
+  // ── Production: Use Secure Proxy (Cloudflare Pages Functions) ──
   if (isProd) {
-    const proxyUrl = import.meta.env.VITE_AI_PROXY_URL || '/.netlify/functions/analyze';
+    const proxyUrl = import.meta.env.VITE_AI_PROXY_URL || '/api/analyze';
     
-    // Fallback to direct call if explicit key is provided in prod (not recommended but works)
-    if (import.meta.env.VITE_SILICONFLOW_API_KEY && !import.meta.env.VITE_AI_PROXY_URL) {
-      // Fall through to Local Direct Mode logic
-    } else {
-      try {
-        const response = await fetch(proxyUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: [{ role: 'user', content: prompt }]
-          }),
-        });
+    try {
+      const response = await fetch(proxyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: prompt }]
+        }),
+      });
 
-        if (!response.ok) throw new Error(`Proxy error: ${response.status}`);
-        const data = await response.json();
-        const content = typeof data === 'string' ? data : (data.content || data.choices?.[0]?.message?.content || '');
-        return parseJson(content);
-      } catch (err) {
-        console.error('AI Proxy failed:', err);
-        return { formal: '侦探在云端遇到了迷雾，请稍后再试。', witty: '侦探掉线了。' };
-      }
+      if (!response.ok) throw new Error(`Proxy error: ${response.status}`);
+      const data = await response.json();
+      const content = typeof data === 'string' ? data : (data.content || data.choices?.[0]?.message?.content || '');
+      return parseJson(content);
+    } catch (err) {
+      console.error('AI Proxy failed:', err);
+      return { formal: '侦探在云端遇到了迷雾，请稍后再试。', witty: '侦探掉线了。' };
     }
   }
 
