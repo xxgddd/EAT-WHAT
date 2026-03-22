@@ -112,23 +112,31 @@ export async function analyzeDay(
     }
   };
 
-  // ── Production: Use Secure Proxy (Netlify Functions) ──
+  // ── Production: Use Secure Proxy (Netlify / Cloudflare / Vercel) ──
   if (isProd) {
-    try {
-      const response = await fetch('/.netlify/functions/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: prompt }]
-        }),
-      });
+    const proxyUrl = import.meta.env.VITE_AI_PROXY_URL || '/.netlify/functions/analyze';
+    
+    // Fallback to direct call if explicit key is provided in prod (not recommended but works)
+    if (import.meta.env.VITE_SILICONFLOW_API_KEY && !import.meta.env.VITE_AI_PROXY_URL) {
+      // Fall through to Local Direct Mode logic
+    } else {
+      try {
+        const response = await fetch(proxyUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [{ role: 'user', content: prompt }]
+          }),
+        });
 
-      if (!response.ok) throw new Error('Proxy error');
-      const data = await response.json();
-      return parseJson(data.content || '');
-    } catch (err) {
-      console.error('AI Proxy failed:', err);
-      return { formal: 'AI 侦探暂时离开了，请稍后再试。', witty: '侦探下班了。' };
+        if (!response.ok) throw new Error(`Proxy error: ${response.status}`);
+        const data = await response.json();
+        const content = typeof data === 'string' ? data : (data.content || data.choices?.[0]?.message?.content || '');
+        return parseJson(content);
+      } catch (err) {
+        console.error('AI Proxy failed:', err);
+        return { formal: '侦探在云端遇到了迷雾，请稍后再试。', witty: '侦探掉线了。' };
+      }
     }
   }
 
