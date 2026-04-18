@@ -6,7 +6,7 @@ export const onRequestPost = async (context: any) => {
   try {
     const body = await context.request.json() as { messages: any[] };
     
-    const response = await fetch("https://api.siliconflow.cn/v1/chat/completions", {
+    const response = await fetch("https://api.siliconflow.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${context.env.SILICONFLOW_API_KEY}`,

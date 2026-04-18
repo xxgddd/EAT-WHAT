@@ -20,7 +20,7 @@ const client = MOCK_MODE
   ? null
   : new OpenAI({
       apiKey: import.meta.env.VITE_SILICONFLOW_API_KEY,
-      baseURL: 'https://api.siliconflow.cn/v1',
+      baseURL: 'https://api.siliconflow.com/v1',
       dangerouslyAllowBrowser: true,
     });
 
